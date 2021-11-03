@@ -7,3 +7,18 @@
 $$
 Y = min(T, C)
 $$
+
+此外我们可以设定一个$\delta$来记录是否在真的截尾了。
+
+$$
+\delta = \begin{cases}
+1 && \text{if } T \le C \\
+0 && \text{if } T > C
+\end{cases}
+$$
+
+这样可以得到下面的图片：
+
+![](images/2021-11-03-13-53-21.png)
+
+
