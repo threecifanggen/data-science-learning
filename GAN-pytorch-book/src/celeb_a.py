@@ -34,6 +34,7 @@ class CELEBADiscriminator(nn.Module):
             self.parameters(),
             lr=0.0001
         )
+        self.temp_loss = 1.
         self.counter = 0
         self.progress = []
 
@@ -48,6 +49,8 @@ class CELEBADiscriminator(nn.Module):
         outputs = self.forward(inputs)
 
         loss = self.loss_function(outputs, targets)
+
+        self.temp_loss = loss
 
         self.counter += 1
 
@@ -80,10 +83,12 @@ class CELEBAGenerator(nn.Module):
         super().__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(100, 200),
-            nn.LeakyReLU(0.02),
-            nn.LayerNorm(200),
-            nn.Linear(200, 784),
+            nn.Linear(100, 3*10*10),
+            nn.LeakyReLU(),
+            nn.LayerNorm(3*10*10),
+            nn.Linear(3*10*10, 3*218*178),
+            # nn.Sigmoid(),
+            View((218, 178, 3)),
             nn.Sigmoid()
         )
 
@@ -91,7 +96,7 @@ class CELEBAGenerator(nn.Module):
             self.parameters(),
             lr=0.0001
         )
-
+        self.temp_loss = 1.
         self.counter = 0
         self.progress = []
 
@@ -109,6 +114,7 @@ class CELEBAGenerator(nn.Module):
         d_output = d.forward(g_output)
         
         loss = d.loss_function(d_output, targets)
+        self.temp_loss = loss
 
         self.counter += 1
         
