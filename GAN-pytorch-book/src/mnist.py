@@ -4,6 +4,8 @@ import torch
 import plotly.express as px
 import pandas as pd
 
+from .view import View
+
 class MNISTDiscriminator(nn.Module):
     """判别器
     """
@@ -19,7 +21,7 @@ class MNISTDiscriminator(nn.Module):
             nn.Sigmoid()
         )
 
-        self.loss_function = nn.BCELoss(reduction='sum')
+        self.loss_function = nn.BCELoss()
 
         self.optimiser = torch.optim.Adam(
             self.parameters(),
@@ -121,3 +123,127 @@ class MNISTGenerator(nn.Module):
         fig = px.line(df, x="step", y="loss")
         fig.show()
 
+
+class MNISTConditionalDiscriminator(nn.Module):
+    """判别器
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        self.model = nn.Sequential(
+            nn.Linear(784+1, 200),
+            nn.LeakyReLU(0.02),
+            nn.LayerNorm(200),
+            nn.Linear(200, 1),
+            nn.Sigmoid()
+        )
+
+        self.loss_function = nn.BCELoss()
+
+        self.optimiser = torch.optim.Adam(
+            self.parameters(),
+            lr=0.0001
+        )
+        self.counter = 0
+        self.progress = []
+
+    def forward(self, image_tensor: torch.FloatTensor, label_tensor: torch.FloatTensor):
+        inputs = torch.cat((image_tensor, label_tensor))
+        return self.model(inputs)
+    
+    def train(
+            self,
+            inputs: torch.FloatTensor,
+            label_tensor: torch.FloatTensor,
+            targets: torch.FloatTensor
+            ) -> NoReturn:
+        outputs = self.forward(inputs, label_tensor)
+
+        loss = self.loss_function(outputs, targets)
+
+        self.counter += 1
+
+        if self.counter % 10 == 0:
+            self.progress.append(loss.item())
+
+        if self.counter % 10000 == 0:
+            print(f"counter = {self.counter}")
+
+        self.optimiser.zero_grad()
+        loss.backward()
+        self.optimiser.step()
+
+    def plot_progress(self) -> NoReturn:
+        """绘制过程图
+        """
+        df = pd.DataFrame({
+            "step": [i * 10 for i in range(1, len(self.progress) + 1)],
+            "loss": self.progress
+        })
+
+        fig = px.line(df, x="step", y="loss")
+        fig.show()
+
+class MNISTConditionalGenerator(nn.Module):
+    """生成器
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        self.model = nn.Sequential(
+            nn.Linear(100+1, 200),
+            nn.LeakyReLU(0.02),
+            nn.LayerNorm(200),
+            nn.Linear(200, 784),
+            nn.Sigmoid()
+        )
+
+        self.optimiser = torch.optim.Adam(
+            self.parameters(),
+            lr=0.0001
+        )
+
+        self.counter = 0
+        self.progress = []
+
+
+    def forward(
+            self,
+            seed_tensor: torch.FloatTensor,
+            label_tensor: torch.FloatTensor
+            ):
+        return self.model(torch.cat((seed_tensor, label_tensor)))
+
+    def train(
+            self,
+            d: MNISTDiscriminator,
+            inputs: torch.FloatTensor,
+            label_tensor: torch.FloatTensor,
+            targets: torch.FloatTensor
+        ):
+        g_output = self.forward(inputs, label_tensor)
+        d_output = d.forward(g_output, label_tensor)
+        
+        loss = d.loss_function(d_output, targets)
+
+        self.counter += 1
+        
+        if self.counter % 10 == 0:
+            self.progress.append(loss.item())
+        
+        self.optimiser.zero_grad()
+        loss.backward()
+        self.optimiser.step()
+
+    def plot_progress(self) -> NoReturn:
+        """绘制过程图
+        """
+        df = pd.DataFrame({
+            "step": [i * 10 for i in range(1, len(self.progress) + 1)],
+            "loss": self.progress
+        })
+
+        fig = px.line(df, x="step", y="loss")
+        fig.show()

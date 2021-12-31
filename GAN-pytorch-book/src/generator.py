@@ -15,3 +15,5 @@ generate_random.__doc__ = "生成随机噪音"
 
 generate_random_image = lambda size: torch.rand(size)
 generate_random_seed = lambda size: torch.randn(size)
+
+generate_random_one_hot = lambda max_val, size=(1,): torch.randint(0, max_val-1, size)
